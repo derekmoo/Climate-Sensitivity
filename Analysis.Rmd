@@ -16,12 +16,24 @@ theme_set(theme_bw())
 
 ## Introduction
 
-- Climate change presents an urgent global challenge, with the equilibrium climate sensitivity (ECS) providing a key measure of the Earth's susceptibility to human influence.
+- Climate change presents an urgent global challenge, with the equilibrium climate sensitivity (ECS, the global temperature increase for a doubling of atmospheric CO2 concentrations) providing a key measure of the Earth's susceptibility to human influence.
 - Estimates of ECS have relied on multiple lines of evidence, but significant uncertainty persists regarding the likely range.
-- This work explores how omitting or incorporating different lines of ECS evidence impacts probabilistic projections from a simple climate model, showing the relative significance of each for accurate future warming projections.
+- This work explores how omitting or incorporating different lines of ECS evidence impacts probabilistic projections from a simple climate model.
 
-## 
+## Step 1
+Instantiate a core
+Run core
+Plot basic output (for a single Hector run)
 
+## Step 2
+Use Matilda to generate parameters
+Plot the histogram for each parameter (reshaping using pivot longer, use ggplot to make a geom density histogram)
+The rest of the Matilda vignette
+
+* Keep the number of runs small (~20) while working
+
+## Step 3
+Talk about repeating the process for several unique ECS values
 
 
 
