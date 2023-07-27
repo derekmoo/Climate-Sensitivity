@@ -1,5 +1,5 @@
 ---
-title: "Probablistic Analysis of Future Climate Change"
+title: "The Influence of Equilibrium Climate Sensitivity Uncertainty on Probabilistic Projections of Future Warming"
 author: "DPM"
 date: "2023-07-21"
 output: html_document
@@ -15,6 +15,13 @@ theme_set(theme_bw())
 ```
 
 ## Introduction
+
+- Climate change presents an urgent global challenge, with the equilibrium climate sensitivity (ECS) providing a key measure of the Earth's susceptibility to human influence.
+- Estimates of ECS have relied on multiple lines of evidence, but significant uncertainty persists regarding the likely range.
+- This work explores how omitting or incorporating different lines of ECS evidence impacts probabilistic projections from a simple climate model, showing the relative significance of each for accurate future warming projections.
+
+## 
+
 
 
 
