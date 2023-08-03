@@ -1,5 +1,5 @@
 ---
-title: "The Influence of Equilibrium Climate Sensitivity Uncertainty on Probabilistic Projections of Future Warming"
+title: "Probabilistic Analysis of Future Climate Change"
 author: "DPM"
 date: "2023-07-21"
 output: html_document
@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(hector)
 library(matilda)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 theme_set(theme_bw())
 ```
@@ -20,17 +21,113 @@ theme_set(theme_bw())
 - Estimates of ECS have relied on multiple lines of evidence, but significant uncertainty persists regarding the likely range.
 - This work explores how omitting or incorporating different lines of ECS evidence impacts probabilistic projections from a simple climate model.
 
-## Step 1
-Instantiate a core
-Run core
-Plot basic output (for a single Hector run)
+## Basic Hector Run
 
-## Step 2
-Use Matilda to generate parameters
-Plot the histogram for each parameter (reshaping using pivot longer, use ggplot to make a geom density histogram)
-The rest of the Matilda vignette
+### Initialize Core
 
-* Keep the number of runs small (~20) while working
+```{r configure-model}
+ini_file <- system.file("input/hector_ssp245.ini", package = "hector")
+core <- newcore(ini_file)
+```
+
+### Run Core
+
+```{r run-core}
+run(core)
+results <- fetchvars(core, 2000:2300)
+head(results)
+```
+
+### Plot of Basic Hector Output
+
+```{r plot-hector-output}
+ggplot(subset(results, variable == "CO2_concentration")) +
+  aes(x = year, y = value) +
+  geom_line() +
+  ggtitle("CO2 Concentration")
+```
+
+## Matilda Run
+
+### Generate parameter values
+
+```{r generate-params}
+set.seed(1)
+param_values <- generate_params(core, draws = 10)
+```
+
+### Parameter histograms
+
+```{r param-histograms}
+# Reshape to long format
+values_long <- param_values %>% 
+  pivot_longer(
+    cols = everything(), 
+    names_to = "Column", 
+    values_to = "Value"
+  )
+
+# Create a ggplot2 density plot
+ggplot(values_long, aes(x = Value, fill = Column)) +
+  geom_density(alpha = 0.6) +
+  theme_minimal() +
+  labs(x = "Value", y = "Density") +
+  facet_wrap(~ Column, scales = "free", ncol = 1) +
+  ggtitle("Density Curves for Each Column") +
+  guides(fill = FALSE) +
+  scale_y_continuous(n.breaks = 2)
+```
+
+### Run Hector model iteratively 
+
+```{r run-hector, message=FALSE}
+results <- iterate_hector(core = core,
+                          params = param_values)
+head(results)
+```
+
+### Plot model runs
+
+```{r plot-model-runs}
+ggplot(results, aes(x = year, y = value, group = run_number, color = as.factor(run_number))) +
+  geom_line() +
+  facet_wrap(~variable, scales = "free_y")
+```
+
+### Score model runs
+
+```{r score-runs}
+scores <- score_hruns(results, criterion_co2_obs(), score_ramp, w1 = 2, w2 = 20)
+
+results_scored <- merge(results, scores, by = "run_number")
+```
+
+### Plot scored runs
+
+```{r plot-scored-runs}
+ggplot(data = results_scored) +
+  geom_line(aes(x = year, y = value, group = run_number, color = weights)) +
+  scale_color_continuous() +
+  facet_wrap(~variable, scales = "free_y")
+```
+
+### Define and calculate metrics
+
+```{r metrics}
+my_metric <- new_metric(GLOBAL_TAS(), 2000:2100, mean)
+
+metric_values <- metric_calc(results, my_metric)
+```
+
+### Weighted probabilistic projections
+
+```{r projections, include=TRUE}
+bins <- c(0, 1, 1.5, 2, 2.5, 3, 3.5, 4, Inf)
+
+prob_calc(metric_values$metric_result, 
+          bins = bins, 
+          scores = scores$weights)
+```
 
 ## Step 3
 Talk about repeating the process for several unique ECS values
