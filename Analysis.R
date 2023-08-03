@@ -3,37 +3,57 @@
 library(matilda)
 library(ggplot2)
 library(dplyr)
+library(tidyr)
 
-# Configure Hector Core
+# Configure Hector core
 ini <- system.file("input/hector_ssp245.ini", package = "hector")
 c_ssp245 <- newcore(ini)
 
-# Generate Parameter Values
+# Generate parameter values and remove ECS
 set.seed(1)
-param_values <- generate_params(c_ssp245, draws = 5)
+param_values <- generate_params(c_ssp245, draws = 500)
+param_values$ECS = NULL
+
+# Parameter histograms
+values_long <- param_values %>% 
+  pivot_longer(
+    cols = everything(), 
+    names_to = "Column", 
+    values_to = "Value"
+  )
+ggplot(values_long, aes(x = Value, fill = Column)) +
+  geom_density(alpha = 0.6) +
+  theme_minimal() +
+  labs(x = "Value", y = "Density") +
+  facet_wrap(~ Column, scales = "free", ncol = 1) +
+  ggtitle("Density Curves for Each Column") +
+  guides(fill = FALSE) +
+  scale_y_continuous(n.breaks = 3)
 
 # Define the different evidence scenarios
-evidence_scenarios <- c("Baseline", "No Historical", "No Paleo", "No Process", "UL + EC")
+evidence_scenarios <- c("Baseline" = 3.2, "No Process" = 3.3, "UL + EC" = 3.4)
 
-# Create a list to store the parameter data frames for each scenario
-list_df_params <- list()
+# Generate and store parameter sets for each evidence scenario
+results <- list()
 
-# Generate parameter sets for each evidence scenario
-for (scenario in evidence_scenarios) {
-  
-  # Copy the original parameter values
-  fixed_param_values <- param_values [c(1:5)]
+for (scenario in names(evidence_scenarios)) {
   
   # Replace the ECS column with the static mean value
-  fixed_param_values$ECS <- 3.2
+  param_values$ECS <- evidence_scenarios[scenario]
   
-  # Store the modified parameter values in the list
-  list_df_params[[scenario]] <- fixed_param_values
+  # CALL MATILDA
+  
+  # results[[scenario]] <- scenario_results
 }
 
+# # Running Matilda analysis for each line of evidence
+# ######
+# 
+# params <- list_df_params[["Baseline"]]
+# 
 # # Running Hector Iteratively
 # results <-iterate_hector(core = c_ssp245,
-#                          params = param_values)
+#                          params = params)
 # head(results)
 # 
 # ggplot(results, aes(x = year, y = value, group = run_number, color = as.factor(run_number))) +
@@ -41,20 +61,11 @@ for (scenario in evidence_scenarios) {
 #   facet_wrap(~variable, scales = "free_y")
 # 
 # # Screening Hector Results
-# scores <- score_hruns(results, criterion_co2_obs(), score_ramp, w1 = 2, w2 = 20)
+# scores <- score_hruns(results, criterion_co2_obs(), score_ramp, w1 = 3, w2 = 12)
 # 
 # results_scored <- merge(results, scores, by = "run_number")
 # 
 # ggplot(data = results_scored) +
-#   geom_line(aes(x = year, y = value, group = run_number, color = weights)) +
-#   scale_color_continuous() +
-#   facet_wrap(~variable, scales = "free_y")
-# 
-# scores_bayes <- score_hruns(results, criterion_co2_obs(), score_bayesian, e = 1)
-# 
-# results_scored_bayes <- merge(results, scores_bayes, by = "run_number")
-# 
-# ggplot(data = results_scored_bayes) +
 #   geom_line(aes(x = year, y = value, group = run_number, color = weights)) +
 #   scale_color_continuous() +
 #   facet_wrap(~variable, scales = "free_y")
@@ -69,6 +80,6 @@ for (scenario in evidence_scenarios) {
 # 
 # bins <- c(0, 1, 1.5, 2, 2.5, 3, 3.5, 4, Inf)
 # 
-# prob_calc(metric_values$metric_result, 
-#           bins = bins, 
+# prob_calc(metric_values$metric_result,
+#           bins = bins,
 #           scores = scores$weights)
