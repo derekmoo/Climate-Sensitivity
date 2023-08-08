@@ -36,7 +36,6 @@ evidence_scenarios <- c("Baseline" = 3.2, "No Process" = 3.3, "UL + EC" = 3.4)
 # Store results for each evidence scenario
 results_list <- list()
 probs_list <- list()
-combined_intervals <- list()
 
 for (scenario in names(evidence_scenarios)) {
   # Scenario name for storage
@@ -74,30 +73,6 @@ for (scenario in names(evidence_scenarios)) {
   probabilitydf <- as.data.frame(probability)
   probabilitydf$evidence_scenario <- rep(scenario_name)
   probs_list[[scenario]] <- probabilitydf
-  
-  # Calculate and store combined confidence intervals: 
-  
-  scenariodf <- results_scored
-  
-  # Subset data to include warming variable
-  scenariodf <- subset(scenariodf, variable == GLOBAL_TAS() &
-                 year > 2000 &
-                 year < 2101)
-  
-  # Calculate confidence intervals using dplyr
-  intervals <- scenariodf %>%
-    group_by(year) %>%
-    summarise(
-      mean_co2 = weighted.mean(value, weights),
-      CI_10 = weighted_confidence_interval(value, weights, level = 0.90)[1],
-      CI_90 = weighted_confidence_interval(value, weights, level = 0.90)[2],
-      CI_33 = weighted_confidence_interval(value, weights, level = 0.66)[1],
-      CI_66 = weighted_confidence_interval(value, weights, level = 0.66)[2]
-    )
-  
-  # Store results
-  intervals$evidence_scenario <- scenario_name
-  combined_intervals[[scenario]] <- intervals
 }
 
 # Plotting CO2 concentration
@@ -105,7 +80,7 @@ for (scenario in names(evidence_scenarios)) {
 results_merge <- do.call(rbind, results_list)
 
 ggplot(subset(results_merge,
-              year > 1990 & year < 2100
+              year > 1960 & year < 2100
               & variable == CONCENTRATIONS_CO2())) +
   geom_line(aes(x = year, y = value,
                 group = run_number,
@@ -117,7 +92,8 @@ ggplot(subset(results_merge,
   geom_line(data = matilda:::metricdata_co2,
             aes(year, co2_ppm),
             color = "red",
-            linewidth = 1) +
+            linewidth = 1,
+            linetype = "dashed") +
   facet_wrap(~evidence_scenario) +
   ylab(expression(CO[2]~Concentration~(ppm))) +
   theme_light() +
@@ -135,7 +111,7 @@ ggplot(probs_merge, aes(fill = Warming, y = Probability, x = Scenario)) +
   scale_y_continuous(breaks = seq(0, 1.0, 0.1)) +
   scale_fill_manual(values = c("dodgerblue", 
                                "skyblue1", 
-                               "mistyrose",
+                               "mistyrose", # change to red
                                "lightcoral",
                                "red",
                                "darkred"),
@@ -172,22 +148,59 @@ weighted_confidence_interval <- function(data, weights, level = 0.95) {
   return(c(lower_bound, upper_bound))
 }
 
+
+# Calculate and store combined confidence intervals: 
+combined_intervals <- list()
+
+scenariodf <- results_merge
+
+# Subset data to include warming variable
+scenariodf <- subset(scenariodf, variable == GLOBAL_TAS() &
+                       year > 2000 &
+                       year < 2101)
+
+# Calculate confidence intervals using dplyr
+intervals <- scenariodf %>%
+  group_by(evidence_scenario, year) %>%
+  summarise(
+    mean_temp = weighted.mean(value, weights),
+    CI_10 = weighted_confidence_interval(value, weights, level = 0.90)[1],
+    CI_90 = weighted_confidence_interval(value, weights, level = 0.90)[2],
+    CI_33 = weighted_confidence_interval(value, weights, level = 0.66)[1],
+    CI_66 = weighted_confidence_interval(value, weights, level = 0.66)[2]
+  )
+
+# Store results
+intervals$evidence_scenario <- scenario_name
+combined_intervals[[scenario]] <- intervals
+
+
 # Plot the data using ggplot2
 plot <- ggplot()
 
 colors <- c("salmon", "skyblue", "forestgreen")
 
+ggplot(data = intervals) +
+  geom_line(aes(x = year, y = mean_temp, color = evidence_scenario)) +
+  geom_ribbon(aes(x = year, ymin = CI_10, ymax = CI_90, fill = evidence_scenario), alpha = 0.1) +
+  geom_ribbon(aes(x = year, ymin = CI_33, ymax = CI_66, fill = evidence_scenario), alpha = 0.5) +
+  labs(title = "Median Temperature Projections",
+       x = "Year", y = "Temperature (C)")  +
+  theme_light()
+
+
+
 # Add layers for each data frame to the plot
 for (i in 1:length(combined_intervals)) {
   plot <- plot +
-    geom_line(data = combined_intervals[[i]], aes(x = year, y = mean_co2),
+    geom_line(data = combined_intervals[[i]], aes(x = year, y = mean_temp),
               color = colors[i], linewidth = 1) +
     geom_ribbon(data = combined_intervals[[i]], aes(x = year, ymin = CI_10, ymax = CI_90),
                 fill = colors[i], alpha = 0.1) +
     geom_ribbon(data = combined_intervals[[i]], aes(x = year, ymin = CI_33, ymax = CI_66),
                 fill = colors[i], alpha = 0.5) +
-    labs(title = "Median CO2 Concentration Projections",
-         x = "Year", y = "CO2 Concentration")  +
+    labs(title = "Median Temperature Projections",
+         x = "Year", y = "Temperature (C)")  +
     theme_light()
 }
 
