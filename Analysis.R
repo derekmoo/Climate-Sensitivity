@@ -36,6 +36,7 @@ evidence_scenarios <- c("Baseline" = 3.2, "No Process" = 3.3, "UL + EC" = 3.4)
 # Store results for each evidence scenario
 results_list <- list()
 probs_list <- list()
+combined_intervals <- list()
 
 for (scenario in names(evidence_scenarios)) {
   # Scenario name for storage
@@ -72,6 +73,30 @@ for (scenario in names(evidence_scenarios)) {
   probabilitydf <- as.data.frame(probability)
   probabilitydf$evidence_scenario <- rep(scenario_name)
   probs_list[[scenario]] <- probabilitydf
+  
+  # Calculate and store combined confidence intervals: 
+  
+  scenariodf <- results_scored
+  
+  # Subset data to include warming variable
+  scenariodf <- subset(scenariodf, variable == GLOBAL_TAS() &
+                 year > 2000 &
+                 year < 2101)
+  
+  # Calculate confidence intervals using dplyr
+  intervals <- scenariodf %>%
+    group_by(year) %>%
+    summarise(
+      mean_co2 = weighted.mean(value, weights),
+      CI_10 = weighted_confidence_interval(value, weights, level = 0.90)[1],
+      CI_90 = weighted_confidence_interval(value, weights, level = 0.90)[2],
+      CI_33 = weighted_confidence_interval(value, weights, level = 0.66)[1],
+      CI_66 = weighted_confidence_interval(value, weights, level = 0.66)[2]
+    )
+  
+  # Store results
+  intervals$evidence_scenario <- scenario_name
+  combined_intervals[[scenario]] <- intervals
 }
 
 # Plotting CO2 concentration
@@ -122,8 +147,47 @@ ggplot(probs_merge, aes(fill = Warming, y = Probability, x = Scenario)) +
   coord_flip() +
   theme_light() 
 
+# Plotting weighted median with 5-95% CI:
 
+# Function to calculate weighted confidence intervals
 
+weighted_confidence_interval <- function(data, weights, level = 0.95) {
+  # Calculate the weighted mean
+  weighted_mean <- sum(data * weights) / sum(weights)
+  
+  # Calculate the standard error of the weighted mean
+  weighted_se <- sqrt(sum(weights * (data - weighted_mean)^2) / (sum(weights) * (length(data) - 1)))
+  
+  # Calculate the t-score for the desired confidence level
+  t_score <- qt((1 + level) / 2, df = length(data) - 1)
+  
+  # Calculate the margin of error
+  margin_of_error <- t_score * weighted_se
+  
+  # Calculate the confidence interval
+  lower_bound <- weighted_mean - margin_of_error
+  upper_bound <- weighted_mean + margin_of_error
+  
+  return(c(lower_bound, upper_bound))
+}
 
+# Plot the data using ggplot2
+plot <- ggplot()
 
+colors <- c("salmon", "skyblue", "forestgreen")
+
+# Add layers for each data frame to the plot
+for (i in 1:length(combined_intervals)) {
+  plot <- plot +
+    geom_line(data = combined_intervals[[i]], aes(x = year, y = mean_co2),
+              color = colors[i], linewidth = 1) +
+    geom_ribbon(data = combined_intervals[[i]], aes(x = year, ymin = CI_10, ymax = CI_90),
+                fill = colors[i], alpha = 0.1) +
+    geom_ribbon(data = combined_intervals[[i]], aes(x = year, ymin = CI_33, ymax = CI_66),
+                fill = colors[i], alpha = 0.5) +
+    labs(title = "Median CO2 Concentration Projections",
+         x = "Year", y = "CO2 Concentration")
+}
+
+print(plot)
 
