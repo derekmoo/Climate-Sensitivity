@@ -52,7 +52,8 @@ for (scenario in names(evidence_scenarios)) {
                            params = param_values)
   
   # Screening Hector results using score_ramp algorithm
-  scores <- score_hruns(results, criterion_co2_obs(), score_ramp, w1 = 3, w2 = 12)
+  co2_sd <- sd(matilda:::metricdata_co2$co2_ppm) # Standard deviation of observed co2 data
+  scores <- score_hruns(results, criterion_co2_obs(), score_ramp, w1 = 0, w2 = co2_sd)
   results_scored <- merge(results, scores, by = "run_number")
   
   # Store results
@@ -186,7 +187,8 @@ for (i in 1:length(combined_intervals)) {
     geom_ribbon(data = combined_intervals[[i]], aes(x = year, ymin = CI_33, ymax = CI_66),
                 fill = colors[i], alpha = 0.5) +
     labs(title = "Median CO2 Concentration Projections",
-         x = "Year", y = "CO2 Concentration")
+         x = "Year", y = "CO2 Concentration")  +
+    theme_light()
 }
 
 print(plot)
