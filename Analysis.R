@@ -150,7 +150,7 @@ weighted_confidence_interval <- function(data, weights, level = 0.95) {
 
 # Subset data to include warming variable
 results_subset <- subset(results_merge, variable == GLOBAL_TAS() &
-                       year > 2000 &
+                       year > 2040 &
                        year < 2101)
 
 # Calculate confidence intervals using dplyr
@@ -165,16 +165,16 @@ intervals <- results_subset %>%
   )
 
 # Plot the data using ggplot2
-plot <- ggplot()
-
-colors <- c("salmon", "skyblue", "forestgreen")
+colors <- c("forestgreen", "skyblue", "salmon")
 
 ggplot(data = intervals) +
   geom_line(aes(x = year, y = mean_temp, color = evidence_scenario)) +
   geom_ribbon(aes(x = year, ymin = CI_10, ymax = CI_90, fill = evidence_scenario), alpha = 0.1) +
   geom_ribbon(aes(x = year, ymin = CI_33, ymax = CI_66, fill = evidence_scenario), alpha = 0.5) +
   labs(title = "Median Temperature Projections",
-       x = "Year", y = "Temperature (C)")  +
+       x = "Year", y = "Temperature (C)") +
+  scale_color_manual(values = colors) +
+  scale_fill_manual(values = colors) +
   theme_light()
 
 
