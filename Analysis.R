@@ -148,19 +148,13 @@ weighted_confidence_interval <- function(data, weights, level = 0.95) {
   return(c(lower_bound, upper_bound))
 }
 
-
-# Calculate and store combined confidence intervals: 
-combined_intervals <- list()
-
-scenariodf <- results_merge
-
 # Subset data to include warming variable
-scenariodf <- subset(scenariodf, variable == GLOBAL_TAS() &
+results_subset <- subset(results_merge, variable == GLOBAL_TAS() &
                        year > 2000 &
                        year < 2101)
 
 # Calculate confidence intervals using dplyr
-intervals <- scenariodf %>%
+intervals <- results_subset %>%
   group_by(evidence_scenario, year) %>%
   summarise(
     mean_temp = weighted.mean(value, weights),
@@ -169,11 +163,6 @@ intervals <- scenariodf %>%
     CI_33 = weighted_confidence_interval(value, weights, level = 0.66)[1],
     CI_66 = weighted_confidence_interval(value, weights, level = 0.66)[2]
   )
-
-# Store results
-intervals$evidence_scenario <- scenario_name
-combined_intervals[[scenario]] <- intervals
-
 
 # Plot the data using ggplot2
 plot <- ggplot()
@@ -188,21 +177,4 @@ ggplot(data = intervals) +
        x = "Year", y = "Temperature (C)")  +
   theme_light()
 
-
-
-# Add layers for each data frame to the plot
-for (i in 1:length(combined_intervals)) {
-  plot <- plot +
-    geom_line(data = combined_intervals[[i]], aes(x = year, y = mean_temp),
-              color = colors[i], linewidth = 1) +
-    geom_ribbon(data = combined_intervals[[i]], aes(x = year, ymin = CI_10, ymax = CI_90),
-                fill = colors[i], alpha = 0.1) +
-    geom_ribbon(data = combined_intervals[[i]], aes(x = year, ymin = CI_33, ymax = CI_66),
-                fill = colors[i], alpha = 0.5) +
-    labs(title = "Median Temperature Projections",
-         x = "Year", y = "Temperature (C)")  +
-    theme_light()
-}
-
-print(plot)
 
