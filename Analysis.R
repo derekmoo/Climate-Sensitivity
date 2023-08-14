@@ -11,7 +11,7 @@ c_ssp245 <- newcore(ini, name = "SSP 2-4.5")
 
 # Generate parameter values and remove ECS
 set.seed(1)
-param_values <- generate_params(c_ssp245, draws = 15)
+param_values <- generate_params(c_ssp245, draws = 500)
 param_values$ECS = NULL
 
 # Parameter histograms
@@ -36,7 +36,7 @@ evidence_scenarios <- c("Baseline" = 3.2, "No Process" = 3.3, "UL + EC" = 3.4)
 # Store results for each evidence scenario
 results_list <- list()
 probs_list <- list()
-
+start <- Sys.time()
 for (scenario in names(evidence_scenarios)) {
   # Scenario name for storage
   scenario_name <- paste(scenario, evidence_scenarios[scenario], sep = ", ECS = ")
@@ -74,13 +74,13 @@ for (scenario in names(evidence_scenarios)) {
   probabilitydf$evidence_scenario <- rep(scenario_name)
   probs_list[[scenario]] <- probabilitydf
 }
-
+end <- Sys.time()
 # Plotting CO2 concentration
 
 results_merge <- do.call(rbind, results_list)
 
-ggplot(subset(results_merge,
-              year > 1960 & year < 2100
+ggplot(subset(results_list[["Baseline"]],
+              year > 1956 & year < 2100
               & variable == CONCENTRATIONS_CO2())) +
   geom_line(aes(x = year, y = value,
                 group = run_number,
@@ -93,7 +93,7 @@ ggplot(subset(results_merge,
             aes(year, co2_ppm),
             color = "red",
             linewidth = 1,
-            linetype = "dashed") +
+            linetype = "longdash") +
   facet_wrap(~evidence_scenario) +
   ylab(expression(CO[2]~Concentration~(ppm))) +
   theme_light() +
@@ -150,7 +150,7 @@ weighted_confidence_interval <- function(data, weights, level = 0.95) {
 
 # Subset data to include warming variable
 results_subset <- subset(results_merge, variable == GLOBAL_TAS() &
-                       year > 2040 &
+                       year > 2035 &
                        year < 2101)
 
 # Calculate confidence intervals using dplyr
@@ -165,16 +165,17 @@ intervals <- results_subset %>%
   )
 
 # Plot the data using ggplot2
-colors <- c("forestgreen", "skyblue", "salmon")
+colors <- c("#F69320", "#003466", "#DF0000")
 
 ggplot(data = intervals) +
   geom_line(aes(x = year, y = mean_temp, color = evidence_scenario)) +
-  geom_ribbon(aes(x = year, ymin = CI_10, ymax = CI_90, fill = evidence_scenario), alpha = 0.1) +
-  geom_ribbon(aes(x = year, ymin = CI_33, ymax = CI_66, fill = evidence_scenario), alpha = 0.5) +
-  labs(title = "Median Temperature Projections",
-       x = "Year", y = "Temperature (C)") +
+  geom_ribbon(aes(x = year, ymin = CI_10, ymax = CI_90, fill = evidence_scenario), alpha = 0.2) +
+  geom_ribbon(aes(x = year, ymin = CI_33, ymax = CI_66, fill = evidence_scenario), alpha = 0.4) +
+  labs(title = "Median Temperature Projections (5-95% CI)",
+       x = "Year", y = "Temperature (\u00B0C)", color = "Evidence Scenario", fill = "Evidence Scenario") +
   scale_color_manual(values = colors) +
   scale_fill_manual(values = colors) +
   theme_light()
 
+print(end-start)
 
